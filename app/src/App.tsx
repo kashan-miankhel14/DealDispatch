@@ -402,6 +402,10 @@ export default function App() {
   }
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }, [section])
+
+  useEffect(() => {
     const initialRead = window.setTimeout(() => { void checkGraph8() }, 0)
     return () => window.clearTimeout(initialRead)
   }, [])
@@ -519,7 +523,7 @@ export default function App() {
       </header>
 
       <div className="content">
-        <section className="intro">
+        <section className="intro" key={`intro-${section}`}>
           <div>
             <div className="kicker">{section === 'live' ? 'GRAPH8 DATA · OPTIONAL GEMINI PREP · HANDOFF HYPOTHESIS' : section === 'analytics' ? 'REAL GRAPH8 TRENDS · SEPARATE DEMO ANALYTICS' : section === 'team' ? 'DEMO PERFORMANCE, PUT TO WORK' : section === 'assignment' ? 'URGENT HANDOFF SIMULATION' : 'DEMO EVIDENCE AND OUTCOMES'}</div>
             <h1>{section === 'live' ? <>From buyer signal<br/><em>to a better next step.</em></> : section === 'analytics' ? <>See the data.<br/><em>Know what is live.</em></> : section === 'team' ? <>Measure results.<br/><em>Improve the next assignment.</em></> : section === 'assignment' ? <>Give urgent work<br/><em>its best-fit SDR.</em></> : <>Every assignment,<br/><em>accounted for.</em></>}</h1>
@@ -536,6 +540,25 @@ export default function App() {
           <div className="intro-buttons">{section === 'live' ? <><button className="quiet-button" onClick={checkGraph8} disabled={busy}>↻ &nbsp; {busy ? 'Refreshing…' : 'Refresh live data'}</button><button className="signal-button" onClick={() => setSection('assignment')}>Open urgency simulation <span>→</span></button></> : section === 'analytics' ? <><button className="quiet-button" onClick={checkGraph8} disabled={busy}>↻ &nbsp; {busy ? 'Refreshing…' : 'Refresh Graph8 charts'}</button><button className="signal-button" onClick={() => setSection('team')}>Open demo scorecard <span>→</span></button></> : <><button className="quiet-button" onClick={reset}>↺ &nbsp; Reset demo</button><button className="signal-button" onClick={addSignal}><span>＋</span> Simulate buyer signal</button></>}</div>
         </section>
 
+        <div className="page-transition" key={`view-${section}`}>
+        {section === 'live' && <nav className="live-section-nav" aria-label="Live workspace sections">
+          <a className="live-section-link" href="#live-data">
+            <span className="live-section-number">01</span>
+            <span><b>Organization</b><small>Graph8 activity and team</small></span>
+            <span className="live-section-arrow">↘</span>
+          </a>
+          <a className="live-section-link" href="#live-prospecting">
+            <span className="live-section-number">02</span>
+            <span><b>Prospect prep</b><small>Global search + Gemini</small></span>
+            <span className="live-section-arrow">↘</span>
+          </a>
+          <a className="live-section-link" href="#live-demo">
+            <span className="live-section-number">03</span>
+            <span><b>Demo workspace</b><small>Fictional data, full flow</small></span>
+            <span className="live-section-arrow">↘</span>
+          </a>
+        </nav>}
+
         {section === 'analytics' && <AnalyticsDashboard
           trends={liveSnapshot?.sources.trends.items ?? []}
           trendState={liveSnapshot?.sources.trends.state ?? null}
@@ -549,12 +572,12 @@ export default function App() {
           onFocusPerson={id => { setFocusedPersonId(id); setSection('team') }}
         />}
 
-        {section === 'live' && !liveSnapshot && <section className="live-data-card live-connect-state" aria-label="Graph8 connection status">
+        {section === 'live' && !liveSnapshot && <section id="live-data" className="live-data-card live-connect-state" aria-label="Graph8 connection status">
           <div className="live-data-heading"><div><div className="kicker">GRAPH8 CONNECTION</div><h2>{connection.mode === 'loading' ? 'Connecting to your organization…' : connection.mode === 'demo' ? 'Live data is not configured' : 'Could not load live data'}</h2><p>{connection.mode === 'demo' ? 'Set G8_API_KEY in app/.env and restart the app. The key stays server-side.' : connection.message}</p></div><span className={`live-state live-${connection.mode}`}>{connection.mode === 'loading' ? 'CONNECTING' : connection.mode === 'demo' ? 'DEMO ONLY' : 'READ FAILED'}</span></div>
           <div className="live-connect-actions"><button className="quiet-button" onClick={checkGraph8} disabled={busy}>↻ &nbsp; Retry Graph8 read</button><button className="signal-button" onClick={() => setSection('team')}>Open synthetic demo <span>→</span></button></div>
         </section>}
 
-        {section === 'live' && liveSnapshot && <section className="live-data-card" aria-label="Live Graph8 workspace">
+        {section === 'live' && liveSnapshot && <section id="live-data" className="live-data-card" aria-label="Live Graph8 workspace">
           <div className="live-data-heading"><div><div className="kicker">CONNECTED GRAPH8 DATA</div><h2>Live organization snapshot</h2><p>Graph8 API data · {liveSnapshot.fetchedAt ? new Date(liveSnapshot.fetchedAt).toLocaleString() : 'latest refresh'}</p></div><span className={`live-state live-${liveSnapshot.mode}`}>{liveSnapshot.mode === 'error' ? 'READ FAILED' : liveSnapshot.mode === 'partial' ? 'PARTIAL READ' : 'LIVE READ'}</span></div>
           {liveSnapshot.counts.sdrs === 0 && liveSnapshot.counts.openTasks === 0 && <aside className="demo-empty-callout" aria-label="Synthetic demo fallback">
             <div><span className="demo-callout-kicker">LIVE ORG HAS NO SDR OR TASK ROWS</span><h3>Use the complete sample workspace instead</h3><p>The demo includes a fictional manager-to-SDR org chart, scorecard, workload, buyer signals and four-step handoff. Sample data stays separate from Graph8.</p></div>
@@ -604,7 +627,7 @@ export default function App() {
           <div className="live-data-foot">Analytics and roster are read from Graph8. Task writes are {liveSnapshot.taskWritesEnabled ? 'enabled' : 'disabled by default'}; when enabled, assignments require manager confirmation and an active SDR match. On-duty status and capacity are not available here, so timed offers and automatic rerouting remain simulated.</div>
         </section>}
 
-        {section === 'live' && <section className="prospect-search-panel" aria-label="Graph8 global prospect search">
+        {section === 'live' && <section id="live-prospecting" className="prospect-search-panel" aria-label="Graph8 global prospect search">
           <div className="prospect-search-heading"><div><div className="kicker">GRAPH8 GLOBAL INDEX</div><h2>Find real prospects</h2><p>Search Graph8’s global B2B index. These prospects are separate from your organization’s SDR activity and CRM records.</p></div><span className="source-pill">ON-DEMAND SEARCH</span></div>
           <div className="ai-workflow-strip" aria-label="AI outreach workflow"><div><b>1 · Find</b><span>Search real Graph8 prospects</span></div><i>→</i><div><b>2 · Ground</b><span>Use prospect facts + your offer</span></div><i>→</i><div><b>3 · Prepare</b><span>Gemini builds one reviewable SDR pack</span></div></div>
           <p className="ai-role-note"><b>What AI does:</b> One Gemini call turns selected Graph8 facts into a call brief, opener, qualification questions, a cautious next step and a first-touch email. It does not infer intent, score leads, pick an SDR, or send anything.</p>
@@ -655,7 +678,7 @@ export default function App() {
           </>}
         </section>}
 
-        {section === 'live' && <section className="demo-preview-panel" aria-label="Synthetic demo data preview">
+        {section === 'live' && <section id="live-demo" className="demo-preview-panel" aria-label="Synthetic demo data preview">
           <div className="demo-preview-heading">
             <div><div className="kicker">SYNTHETIC DEMO DATA · SEPARATE FROM GRAPH8</div><h2>See the complete DealDispatch workflow</h2><p>Fictional SDRs, sample buyer signals and illustrative scores make the four-step flow usable even when your organization has no activity rows.</p></div>
             <span className="source-pill">NOT LIVE CUSTOMER DATA</span>
@@ -823,6 +846,7 @@ export default function App() {
           }) : <div className="activity-no-results"><b>No demo events match</b><span>Try a different filter or search term, or reset the demo log.</span></div>}</section>
         </>}
 
+        </div>
         <footer><span>DealDispatch <b>·</b> SDR performance linked to better work assignment</span><span>{section === 'live' ? 'Graph8 task owners change only after manager confirmation; urgent rerouting stays simulated.' : section === 'analytics' ? 'Live Graph8 charts and synthetic sample charts are kept separate.' : 'All SDRs, scores, buyer work and outcomes here are synthetic demo data.'}</span></footer>
       </div>
     </main>
