@@ -21,7 +21,7 @@ npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. The app opens on **Live Graph8**. Choose **Urgency simulation** to change the acceptance window, open an offer, simulate acceptance/decline/timeout, and see rerouting or a capacity gap. The demo workflow is saved in the browser; it does not message reps or write Graph8 assignments.
+Open `http://127.0.0.1:5173`. The app opens on **Live Graph8**. Use **Start demo** in the top bar to reset the fictional scenario and jump straight into the handoff walkthrough; **Copy pitch** copies the short product explanation. Choose **Urgency simulation** to change the acceptance window, open an offer, simulate acceptance/decline/timeout, and see rerouting or a capacity gap. The **Demo audit trail** can be searched and filtered by signals, handoffs, outcomes, or coverage gaps. The demo workflow is saved in the browser; it does not message reps or write Graph8 assignments.
 
 The Live Graph8 page also shows a clearly separated **Synthetic demo data** preview: six fictional SDRs, three sample opportunities, illustrative scores, and a shortcut to run the full handoff. Select **Reset & run four-step demo** to start with a clean queue. The demo seed is never substituted into Graph8 analytics.
 
@@ -39,7 +39,7 @@ All offers, timers, outcomes, and performance changes are local simulation only.
 
 ## Analytics & charts
 
-Open **Analytics & charts** in the left navigation. The top charts use actual numeric Graph8 trend periods and leaderboard rows only; choose a metric from each chart's selector. If Graph8 returns no usable periods or SDR rows, the live chart explains why and stays empty rather than inventing data. The lower activity funnel and pipeline-by-SDR chart use the fictional demo roster and are explicitly labeled synthetic. Recording outcomes in the urgency simulator updates that sample funnel and pipeline.
+Open **Analytics & charts** in the left navigation. The top charts use actual numeric Graph8 trend periods and leaderboard rows only; choose a metric from each chart's selector. If Graph8 returns no usable periods or SDR rows, the live chart explains why and stays empty rather than inventing data. The lower activity funnel, pipeline-by-SDR chart, and selectable rep comparison use the fictional demo roster and are explicitly labeled synthetic. Recording outcomes in the urgency simulator updates the sample funnel, pipeline, and scorecard measures.
 
 ## What Gemini does
 

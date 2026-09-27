@@ -136,6 +136,7 @@ function Graph8RepChart({ reps, state, message, loaded, onOpenLive }: {
 }
 
 function SyntheticAnalytics({ people, onFocusPerson }: { people: Person[]; onFocusPerson: (id: string) => void }) {
+  const [comparisonMetric, setComparisonMetric] = useState<'impact' | 'callGrade' | 'firstTouchSla' | 'qualifiedHandoffs'>('impact')
   const activePeople = people.filter(person => person.activeContract)
   const totals = activePeople.reduce((sum, person) => ({
     dials: sum.dials + person.metrics.dials,
@@ -152,6 +153,12 @@ function SyntheticAnalytics({ people, onFocusPerson }: { people: Person[]; onFoc
   const maxStage = Math.max(1, ...stages.map(stage => stage.value))
   const pipelineRows = [...activePeople].sort((left, right) => right.metrics.qualifiedPipeline - left.metrics.qualifiedPipeline)
   const maxPipeline = Math.max(1, ...pipelineRows.map(person => person.metrics.qualifiedPipeline))
+  const comparisonRows = activePeople.map(person => ({
+    person,
+    value: comparisonMetric === 'impact' ? performanceScore(person) : person.metrics[comparisonMetric],
+  })).sort((left, right) => right.value - left.value)
+  const maxComparison = Math.max(1, ...comparisonRows.map(row => row.value))
+  const comparisonLabel = ({ impact: 'Demo impact score', callGrade: 'Call grade', firstTouchSla: 'First-touch SLA', qualifiedHandoffs: 'Qualified handoffs' })[comparisonMetric]
 
   return <section className="synthetic-analytics">
     <div className="analytics-section-head"><div><span className="analytics-eyebrow">SYNTHETIC DEMO DATA · NOT GRAPH8 CUSTOMER DATA</span><h2>Preview the analytics experience</h2><p>These charts use fictional sample SDRs. They update when you record outcomes in the urgency simulator.</p></div><span className="analytics-source-badge demo-badge">SAMPLE ONLY</span></div>
@@ -180,6 +187,21 @@ function SyntheticAnalytics({ people, onFocusPerson }: { people: Person[]; onFoc
         <div className="chart-footnote">Impact score: {activePeople.length ? Math.round(activePeople.reduce((sum, person) => sum + performanceScore(person), 0) / activePeople.length) : 0} average across the demo roster. This is illustrative, not a Graph8 metric.</div>
       </section>
     </div>
+    <section className="analytics-card demo-rep-comparison" aria-label="Synthetic SDR performance comparison">
+      <div className="analytics-card-head">
+        <div><span className="analytics-eyebrow">SAMPLE SDR COMPARISON</span><h3>Compare the team on a useful outcome</h3><p>Choose a measure and select a fictional rep to open their scorecard.</p></div>
+        <label className="analytics-select-label">Measure<select value={comparisonMetric} onChange={event => setComparisonMetric(event.target.value as typeof comparisonMetric)}>
+          <option value="impact">Impact score</option><option value="callGrade">Call grade</option><option value="firstTouchSla">First-touch SLA</option><option value="qualifiedHandoffs">Qualified handoffs</option>
+        </select></label>
+      </div>
+      <div className="demo-comparison-list">{comparisonRows.map((row, index) => <button className="demo-comparison-row" key={row.person.id} onClick={() => onFocusPerson(row.person.id)}>
+        <span className="rep-chart-rank">{String(index + 1).padStart(2, '0')}</span>
+        <span className="demo-comparison-name"><b>{row.person.name}</b><small>{row.person.role}</small></span>
+        <span className="demo-comparison-track"><i style={{ width: `${Math.max(0, row.value / maxComparison * 100)}%` }}/></span>
+        <strong>{comparisonMetric === 'qualifiedHandoffs' ? row.value : `${Math.round(row.value)}%`}</strong>
+      </button>)}</div>
+      <div className="chart-footnote">{comparisonLabel} values come from the fictional sample roster; they are not Graph8 analytics or validated benchmarks.</div>
+    </section>
   </section>
 }
 

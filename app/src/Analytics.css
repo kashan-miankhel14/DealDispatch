@@ -62,3 +62,9 @@
 .pipeline-chart-track>i{background:linear-gradient(90deg,#64c9d6,#8a78df)}
 @media(max-width:1050px){.analytics-chart-grid,.demo-chart-grid{grid-template-columns:1fr 1fr}.analytics-card{padding:14px}.analytics-section-head h2{font-size:19px}}
 @media(max-width:760px){.analytics-chart-grid,.demo-chart-grid{grid-template-columns:1fr}.analytics-dashboard{gap:18px}.analytics-section-head{align-items:flex-start;flex-direction:column}.analytics-card-head{flex-direction:column;min-height:0}.analytics-select-label{width:100%}.analytics-select-label select{max-width:none}.analytics-card{padding:14px}.analytics-empty{min-height:180px}.trend-chart{min-height:150px}.synthetic-analytics{padding:13px}.analytics-source-badge{font-size:8px}}
+
+.demo-rep-comparison { padding: 18px; }
+.demo-comparison-list { margin: 2px -4px 0; }
+.demo-rep-comparison .analytics-card-head { align-items: center; }
+.demo-rep-comparison .chart-footnote { padding-top: 10px; border-top: 1px solid #efebe4; }
+@media(max-width:760px){.demo-rep-comparison .analytics-card-head{display:grid}.demo-rep-comparison .analytics-select-label{width:100%}.demo-rep-comparison .analytics-select-label select{max-width:none}.demo-comparison-row{min-height:43px}}

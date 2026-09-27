@@ -10,10 +10,12 @@ import './DemoPreview.css'
 import './AiOutreach.css'
 import './Presentation.css'
 import './Experience.css'
+import './Polish.css'
 
 const STORAGE_KEY = 'dealdispatch.demo.v2'
 const INITIAL_NOW = Date.now()
 type Section = 'live' | 'analytics' | 'team' | 'assignment' | 'activity'
+type ActivityFilter = 'all' | 'signals' | 'handoffs' | 'outcomes' | 'gaps'
 type Connection = { mode: 'loading' | 'demo' | 'connected' | 'partial' | 'error'; message: string }
 type LiveSource<T> = { state: 'live' | 'empty' | 'error'; count: number; items: T[]; message?: string }
 type LiveMetricSource = { state: 'live' | 'empty' | 'error'; count: number; metrics: Record<string, string | number | boolean>; message?: string }
@@ -103,6 +105,8 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
   const [filter, setFilter] = useState<QueueFilter>('all')
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
+  const [activitySearch, setActivitySearch] = useState('')
 
   const selected = data.opportunities.find(item => item.id === selectedId)
   const focusedPerson = data.people.find(person => person.id === focusedPersonId) ?? data.people[0]
@@ -240,8 +244,23 @@ export default function App() {
     setFilter('all')
     setOfferWindowSeconds(30)
     setNow(Date.now())
+    setActivityFilter('all')
+    setActivitySearch('')
     if (section === 'live') setSection('assignment')
     setToast('Demo restored to its starting state')
+  }
+
+  const startGuidedDemo = () => {
+    setData(structuredClone(demoSeed))
+    setSelectedId('opp-1')
+    setFocusedPersonId('maya')
+    setFilter('all')
+    setOfferWindowSeconds(30)
+    setNow(Date.now())
+    setActivityFilter('all')
+    setActivitySearch('')
+    setSection('assignment')
+    setToast('Sample urgent-handoff scenario is ready')
   }
 
   const changeQueueFilter = (nextFilter: QueueFilter) => {
@@ -349,6 +368,16 @@ export default function App() {
     }
   }
 
+  const copyPitch = async () => {
+    const pitch = 'DealDispatch tests a time-bound human handoff for urgent buyer work: offer it to an eligible SDR, reroute on decline or timeout, and flag a manager coverage gap if nobody can take it. The dispatch workflow is a prototype; Graph8 feature overlap still needs confirmation.'
+    try {
+      await navigator.clipboard.writeText(pitch)
+      setToast('30-second product pitch copied')
+    } catch {
+      setToast('Clipboard access is unavailable in this browser')
+    }
+  }
+
   const assignLiveTask = async (task: LiveTask, assigneeId: string) => {
     if (!liveSnapshot?.taskWritesEnabled) return setToast('Graph8 task writes are disabled for this deployment')
     const member = liveSnapshot?.sources.members.items.find(item => item.id === assigneeId)
@@ -412,10 +441,25 @@ export default function App() {
   const capacityCount = data.people.filter(person => person.activeContract && person.onDuty && person.load < person.capacity).length
   const availableSlots = data.people.filter(person => person.activeContract && person.onDuty).reduce((sum, person) => sum + Math.max(0, person.capacity - person.load), 0)
   const visible = data.opportunities.filter(item => matchesQueueFilter(item, filter))
+  const visibleActivity = data.log.filter(event => {
+    const opportunity = data.opportunities.find(item => item.id === event.opportunity)
+    const eventGroup = event.kind === 'signal' ? 'signals'
+      : event.kind === 'gap' ? 'gaps'
+        : event.kind === 'outcome' ? 'outcomes' : 'handoffs'
+    const matchesType = activityFilter === 'all' || activityFilter === eventGroup
+    const searchText = `${event.text} ${event.person ?? ''} ${opportunity?.company ?? ''}`.toLowerCase()
+    return matchesType && searchText.includes(activitySearch.trim().toLowerCase())
+  })
   const activePeople = data.people.filter(person => person.activeContract)
   const teamQualified = activePeople.reduce((sum, person) => sum + person.metrics.qualifiedHandoffs, 0)
   const teamPipeline = activePeople.reduce((sum, person) => sum + person.metrics.qualifiedPipeline, 0)
   const meanCallGrade = Math.round(activePeople.reduce((sum, person) => sum + person.metrics.callGrade, 0) / Math.max(activePeople.length, 1))
+  const demoActivityTotals = rankedPeople.reduce((totals, person) => ({
+    dials: totals.dials + person.metrics.dials,
+    connections: totals.connections + person.metrics.connections,
+    meetings: totals.meetings + person.metrics.meetingsBooked,
+    qualified: totals.qualified + person.metrics.qualifiedHandoffs,
+  }), { dials: 0, connections: 0, meetings: 0, qualified: 0 })
   const nextWork = data.opportunities.find(item => item.state === 'new') ?? data.opportunities.find(item => item.state === 'gap')
   const topCandidate = nextWork ? chooseNext(data.people, nextWork) : undefined
   const topCandidateScore = topCandidate && nextWork ? candidateRank(topCandidate, nextWork) : 0
@@ -471,7 +515,7 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <div className="crumb">DealDispatch <span>/</span> <b>{section === 'live' ? 'Live Graph8 data' : section === 'analytics' ? 'Analytics & charts' : section === 'team' ? 'Demo scorecard' : section === 'assignment' ? 'Urgency simulation' : 'Demo audit trail'}</b></div>
-        <div className="top-actions"><span className={`connection-pill ${connection.mode}`}><i/>{connection.message}</span><button className="icon-button" aria-label="Check Graph8 connection" title="Check Graph8 SDK connection" onClick={checkGraph8} disabled={busy}>{busy ? '···' : '↻'}</button><div className="user-dot">KS</div></div>
+        <div className="top-actions"><button className="pitch-copy-button" onClick={() => void copyPitch()}><span>▤</span> Copy pitch</button><button className="demo-launch-button" onClick={startGuidedDemo}><span>▶</span> Start demo</button><span className={`connection-pill ${connection.mode}`}><i/>{connection.message}</span><button className="icon-button" aria-label="Check Graph8 connection" title="Check Graph8 SDK connection" onClick={checkGraph8} disabled={busy}>{busy ? '···' : '↻'}</button><div className="user-dot">KS</div></div>
       </header>
 
       <div className="content">
@@ -622,6 +666,27 @@ export default function App() {
             <div><b>{capacityCount}</b><span>SDRs currently eligible</span></div>
             <div><b>{compactCash(teamPipeline)}</b><span>illustrative pipeline</span></div>
           </div>
+          <section className="demo-live-snapshot" aria-label="Sample Graph8-style activity, fictional data">
+            <div className="demo-live-snapshot-head"><div><span className="kicker">SAMPLE TEAM SNAPSHOT · LAST 30 DAYS</span><h3>What a populated workspace can look like</h3></div><span className="demo-live-tag">FICTIONAL EXAMPLE</span></div>
+            <div className="demo-live-metric-grid">
+              <div><span>Outbound dials</span><b>{demoActivityTotals.dials.toLocaleString()}</b></div>
+              <div><span>Connections</span><b>{demoActivityTotals.connections.toLocaleString()}</b></div>
+              <div><span>Meetings booked</span><b>{demoActivityTotals.meetings.toLocaleString()}</b></div>
+              <div><span>Qualified handoffs</span><b>{demoActivityTotals.qualified.toLocaleString()}</b></div>
+            </div>
+            <div className="demo-live-roster">
+              {rankedPeople.slice(0, 3).map((person, index) => {
+                const score = performanceScore(person)
+                return <div className="demo-live-rep" key={person.id}>
+                  <span className="demo-live-rank">0{index + 1}</span>
+                  <span className="demo-live-rep-name"><b>{person.name}</b><small>{person.role}</small></span>
+                  <span className="demo-live-bar"><i style={{ width: `${score}%` }}/></span>
+                  <strong>{score}<small>FIT</small></strong>
+                </div>
+              })}
+            </div>
+            <p className="demo-live-footnote">These sample activity totals and rep scores are computed from the fictional demo roster. They never fill or alter the Graph8 panels above.</p>
+          </section>
           <div className="demo-preview-records">{data.opportunities.slice(0, 3).map(opportunity => <article className="demo-preview-record" key={opportunity.id}>
             <div><span className={`urgency-tag urgency-${opportunity.urgency}`}>{opportunity.urgency.toUpperCase()}</span><span className={`state state-${opportunity.state}`}>{opportunity.state === 'new' ? 'UNASSIGNED' : opportunity.state === 'offered' ? 'OFFER PENDING' : opportunity.state === 'owned' ? opportunity.outcome ? 'CLOSED' : 'ACCEPTED' : 'COVERAGE GAP'}</span></div>
             <b>{opportunity.company}</b><small>{opportunity.signal}</small><strong>{cash(opportunity.value)} <span>illustrative value</span></strong>
@@ -744,12 +809,18 @@ export default function App() {
         </>}
 
         {section === 'activity' && <>
-          <div className="workspace-head"><div><h2>Assignment and outcome trail</h2><p>See why work was assigned and what result changed the SDR scorecard.</p></div><button className="quiet-button" onClick={reset}>↺ Reset activity</button></div>
-          <section className="activity-board"><div className="activity-top"><span>DEMO AUDIT TRAIL</span><span>{data.log.length} events · newest first</span></div>{data.log.map((item, index) => {
+          <div className="workspace-head"><div><h2>Assignment and outcome trail</h2><p>Filter the local demo log to follow each sample handoff from signal to result.</p></div><button className="quiet-button" onClick={reset}>↺ Reset activity</button></div>
+          <div className="activity-toolbar">
+            <label className="activity-search"><span>Search this demo log</span><input value={activitySearch} onChange={event => setActivitySearch(event.target.value)} placeholder="Company, SDR, or event…"/></label>
+            <div className="activity-filters" aria-label="Filter demo events">
+              {([['all', 'All events'], ['signals', 'Signals'], ['handoffs', 'Handoffs'], ['outcomes', 'Outcomes'], ['gaps', 'Coverage gaps']] as const).map(([key, label]) => <button key={key} className={activityFilter === key ? 'activity-filter-active' : ''} aria-pressed={activityFilter === key} onClick={() => setActivityFilter(key)}>{label}<span>{key === 'all' ? data.log.length : data.log.filter(item => key === 'signals' ? item.kind === 'signal' : key === 'handoffs' ? ['offered', 'accepted', 'declined', 'expired', 'rerouted', 'assigned'].includes(item.kind) : key === 'outcomes' ? item.kind === 'outcome' : item.kind === 'gap').length}</span></button>)}
+            </div>
+          </div>
+          <section className="activity-board"><div className="activity-top"><span>DEMO AUDIT TRAIL · LOCAL SAMPLE</span><span>{visibleActivity.length} of {data.log.length} events · newest first</span></div>{visibleActivity.length ? visibleActivity.map((item, index) => {
             const opportunity = data.opportunities.find(entry => entry.id === item.opportunity)
             const icon = item.kind === 'outcome' ? '✓' : item.kind === 'gap' ? '!' : item.kind === 'assigned' ? '↗' : '◎'
-            return <div className="activity-row" key={item.id}><span className={`activity-icon act-${item.kind}`}>{icon}</span><div className="activity-copy"><b>{item.text}</b><span>{opportunity?.company ?? 'Opportunity'}{item.person ? ` · ${item.person}` : ''}</span></div><time>{clock(item.time)}</time><span className="trail-index">{String(data.log.length - index).padStart(2, '0')}</span></div>
-          })}</section>
+            return <div className="activity-row" key={item.id}><span className={`activity-icon act-${item.kind}`}>{icon}</span><div className="activity-copy"><b>{item.text}</b><span>{opportunity?.company ?? 'Opportunity'}{item.person ? ` · ${item.person}` : ''}</span></div><time>{clock(item.time)}</time><span className="trail-index">{String(visibleActivity.length - index).padStart(2, '0')}</span></div>
+          }) : <div className="activity-no-results"><b>No demo events match</b><span>Try a different filter or search term, or reset the demo log.</span></div>}</section>
         </>}
 
         <footer><span>DealDispatch <b>·</b> SDR performance linked to better work assignment</span><span>{section === 'live' ? 'Graph8 task owners change only after manager confirmation; urgent rerouting stays simulated.' : section === 'analytics' ? 'Live Graph8 charts and synthetic sample charts are kept separate.' : 'All SDRs, scores, buyer work and outcomes here are synthetic demo data.'}</span></footer>
