@@ -1,0 +1,194 @@
+.shell{font-size:14px}
+.rail{width:252px;padding:28px 18px}
+.main{margin-left:252px}
+.wordmark{gap:11px;font-size:17px}
+.brand-symbol{width:40px;height:40px;font-size:24px}
+.rail-label{margin:46px 10px 14px;font-size:11px}
+.nav-link{height:48px;padding:0 13px;font-size:14px}
+.nav-link b{font-size:11px}
+.rail-foot{gap:10px;font-size:12px}
+.mini-logo{width:34px;height:34px;font-size:11px}
+.rail-foot small{font-size:11px}
+.topbar{height:64px;padding:0 30px}
+.crumb{font-size:13px}
+.connection-pill{padding:9px 12px;font-size:11px}
+.icon-button,.user-dot{width:34px;height:34px;font-size:12px}
+.content{max-width:1680px;padding:38px 36px 30px}
+.kicker{font-size:11px;letter-spacing:1.2px}
+.intro{gap:24px}
+.intro h1{font-size:clamp(36px,3.2vw,48px);line-height:1.08;letter-spacing:-1.8px;margin:12px 0}
+.intro p{max-width:700px;font-size:15px;line-height:1.65}
+.intro-buttons{gap:10px}
+.quiet-button,.signal-button,.filter-button{padding:12px 15px;border-radius:8px;font-size:13px}
+.metrics{margin:28px 0 34px;border-radius:12px}
+.metric{min-height:104px;padding:20px;gap:14px}
+.metric-icon{width:42px;height:42px;border-radius:11px;font-size:20px}
+.metric small{font-size:12px}
+.metric strong{font-size:27px}
+.metric-note{font-size:11px}
+.workspace-head{margin-bottom:15px}
+.workspace-head h2{font-size:21px;margin:0}
+.workspace-head p{font-size:13px;line-height:1.5}
+.period-pill,.source-pill{padding:7px 11px;font-size:10px}
+.board{grid-template-columns:minmax(330px,.85fr) minmax(470px,1.35fr);min-height:620px;border-radius:12px}
+.queue-head{height:54px;padding:0 18px;font-size:11px}
+.live{font-size:10px}
+.queue-items{padding:11px;gap:8px}
+.opportunity{padding:14px;border-radius:9px}
+.opp-top{font-size:10px}
+.state{padding:5px 8px;font-size:9px}
+.urgency-tag{padding:5px 8px;font-size:9px}
+.opp-company{font-size:15px;margin-top:10px}
+.opp-signal{font-size:12px;line-height:1.4}
+.opp-bottom{margin-top:12px;padding-top:10px;font-size:10px}
+.opp-bottom strong{font-size:13px}
+.opp-bottom strong small{font-size:10px}
+.tiny-face{width:24px;height:24px;font-size:9px}
+.queue-foot{height:48px;padding:0 15px;font-size:10px}
+.queue-foot button,.nothing{font-size:11px}
+.detail{padding:25px 27px 18px}
+.detail-head .kicker{font-size:10px}
+.detail-head h2{font-size:25px}
+.value-strip{gap:12px;padding:13px;margin-top:18px}
+.value-strip>span{font-size:9px}
+.value-strip>strong{font-size:19px}
+.priority{font-size:9px}
+.signal-summary{gap:12px;margin:18px 0}
+.signal-icon{width:36px;height:36px;flex-basis:36px}
+.signal-summary b{font-size:15px}
+.signal-summary p{font-size:13px;line-height:1.6}
+.required{gap:8px}
+.required>span:first-child{font-size:10px}
+.skill-pill{padding:6px 9px;font-size:10px}
+.rule{margin:16px 0}
+.match-heading h3{font-size:17px}
+.match-heading>span{font-size:10px;padding:6px 10px}
+.match-person,.recipient{min-height:68px;gap:11px}
+.person-avatar{width:38px;height:38px;flex-basis:38px;font-size:11px}
+.person-name,.person-main>b{font-size:12px}
+.person-main>span{font-size:11px}
+.person-main>small{font-size:10px}
+.best-fit{font-size:9px}
+.match-score{font-size:16px}
+.match-score small{font-size:8px}
+.assign-person-button{min-width:60px;padding:9px 11px;font-size:11px}
+.route-logic{padding:11px 13px}
+.route-logic>span{font-size:10px}
+.route-logic p{font-size:11px;line-height:1.6}
+.dispatch-button{padding:13px;font-size:12px}
+.detail-foot{font-size:10px}
+.explain{gap:13px;margin-top:16px;padding:14px 16px}
+.explain-icon{width:36px;height:36px}
+.explain b{font-size:12px}
+.explain p{font-size:11px}
+.explain button{font-size:11px}
+.live-data-card,.workflow-steps{margin-bottom:22px;padding:20px;border-radius:12px}
+.live-data-heading h2,.workflow-heading h3{font-size:22px}
+.live-data-heading p{font-size:13px}
+.live-state{padding:7px 10px;font-size:10px}
+.live-data-grid{gap:14px;margin-top:16px}
+.live-data-column{padding:14px;border-radius:9px}
+.live-column-heading h3{font-size:14px}
+.live-column-heading>span{font-size:11px}
+.live-record{padding:11px 0}
+.live-record>b{font-size:14px}
+.live-record>span,.live-record>small{font-size:12px}
+.live-metrics{gap:6px;margin-top:8px}
+.live-metrics small{padding:5px 7px;font-size:10px}
+.live-empty,.live-data-foot{font-size:12px;line-height:1.6}
+.live-metric-row{padding:9px 0;font-size:12px}
+.live-metric-row b{font-size:13px}
+.dispatch-admin{gap:12px}
+.dispatch-admin label{gap:6px;font-size:10px}
+.dispatch-admin select{min-width:150px;padding:10px;font-size:12px}
+.live-task-actions label{font-size:11px}
+.live-task-actions select{padding:9px;font-size:12px}
+.live-assign-button{padding:10px 13px;font-size:12px}
+.workflow-track{gap:10px;margin-top:17px}
+.workflow-step{min-height:78px;gap:10px;padding:12px}
+.workflow-step>span{width:25px;height:25px;flex-basis:25px;font-size:10px}
+.workflow-step b{font-size:11px}
+.workflow-step small{font-size:10px;line-height:1.5}
+.workflow-admin{gap:10px;margin-top:13px;padding-top:12px;font-size:10px}
+.panic-offer-card{padding:16px}
+.panic-kicker{font-size:10px}
+.panic-offer-heading h3{font-size:17px}
+.panic-countdown{font-size:21px}
+.panic-offer-card>p,.owned-card p,.gap-card p{font-size:12px;line-height:1.6}
+.accept-button,.decline-button,.skip-button{padding:10px 13px;font-size:11px}
+.owned-card b,.gap-card b{font-size:12px}
+.gap-card button{padding:9px 11px;font-size:11px}
+.prospect-search-panel{gap:16px;margin:24px 0;padding:24px;border-radius:14px}
+.prospect-search-heading h2{font-size:24px}
+.prospect-search-heading p{font-size:13px}
+.prospect-search-form{gap:14px}
+.prospect-search-form label,.ai-offer-input{font-size:12px}
+.prospect-search-form input,.prospect-search-form select,.ai-offer-input input{min-height:46px;padding:10px 12px;font-size:14px}
+.prospect-search-button{min-height:46px}
+.prospect-search-note,.ai-privacy-note{font-size:11px;line-height:1.6}
+.prospect-results-heading{font-size:13px}
+.prospect-results-heading span{font-size:11px}
+.prospect-result{gap:9px;padding:16px;border-radius:11px}
+.prospect-result-title b{font-size:16px}
+.prospect-result-title span,.prospect-result small,.prospect-result p,.prospect-result a{font-size:12px;line-height:1.55}
+.demo-preview-panel{gap:18px;margin:24px 0;padding:24px;border-radius:14px}
+.demo-preview-heading h2{font-size:24px}
+.demo-preview-heading p{font-size:13px;line-height:1.6}
+.demo-preview-stats>div{padding:15px 17px}
+.demo-preview-stats b{font-size:22px}
+.demo-preview-stats span{font-size:11px}
+.demo-preview-record{gap:9px;padding:15px}
+.demo-preview-record>b{font-size:15px}
+.demo-preview-record>small{font-size:11px;line-height:1.5}
+.demo-preview-record>strong{font-size:14px}
+.demo-preview-record>strong span{font-size:10px}
+.demo-preview-actions>span{font-size:11px}
+.score-method{margin-top:16px;padding:18px}
+.method-heading b{font-size:15px}
+.method-heading p,.method-note{font-size:12px;line-height:1.6}
+.method-chips{gap:8px}
+.method-chips span{font-size:11px}
+.team-table th{padding:12px;font-size:10px}
+.team-table td{padding:12px;font-size:12px}
+.rep-meta b,.impact-value{font-size:13px}
+.rep-meta small,.cell-sub,.confidence-label{font-size:10px}
+.activity-top{height:52px;padding:0 18px;font-size:10px}
+.activity-row{min-height:68px;padding:12px 17px}
+.activity-copy b{font-size:12px}
+.activity-copy span,.activity-row time{font-size:11px}
+.toast{padding:14px 16px;font-size:12px}
+footer{font-size:10px;line-height:1.6}
+
+@media(max-width:1100px){
+  .rail{width:220px}
+  .main{margin-left:220px}
+  .content{padding:28px 22px}
+  .board{grid-template-columns:minmax(270px,.8fr) minmax(390px,1.2fr)}
+  .intro h1{font-size:38px}
+}
+@media(max-width:920px){
+  .team-grid{grid-template-columns:1fr}
+  .live-data-grid{grid-template-columns:1fr 1fr}
+  .board{grid-template-columns:1fr}
+  .queue{max-height:340px;border-right:0;border-bottom:1px solid #e8e2d9}
+}
+@media(max-width:760px){
+  .rail{width:100%;padding:11px 14px}
+  .main{margin-left:0}
+  .content{padding:20px 14px}
+  .intro h1{font-size:34px}
+  .intro p{font-size:13px}
+  .intro-buttons{display:grid;grid-template-columns:1fr 1fr}
+  .metric{min-height:90px;padding:13px 10px}
+  .metric strong{font-size:23px}
+  .metric-note{font-size:10px}
+  .board{grid-template-columns:1fr}
+  .detail{padding:18px 14px}
+  .live-data-grid,.prospect-results-grid{grid-template-columns:1fr}
+  .live-data-column:last-child{grid-column:auto}
+  .prospect-search-panel,.demo-preview-panel{padding:16px}
+  .prospect-search-heading,.demo-preview-heading{display:grid}
+  .workflow-track{grid-template-columns:1fr 1fr}
+  .workflow-admin{line-height:1.6}
+  footer{font-size:10px}
+}

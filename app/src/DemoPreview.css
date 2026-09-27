@@ -1,0 +1,23 @@
+.demo-preview-panel{display:grid;gap:15px;margin:22px 0;padding:20px;border:1px solid #d9d3e8;border-radius:12px;background:linear-gradient(140deg,#fff 0%,#faf8ff 72%,#f4fbfc 100%)}
+.demo-preview-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.demo-preview-heading h2{margin:6px 0;color:#24211f;font-size:19px;letter-spacing:-.035em}
+.demo-preview-heading p{max-width:700px;margin:0;color:#77716a;font-size:11px;line-height:1.6}
+.demo-preview-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid #eee9e1;border-radius:9px;background:#fff}
+.demo-preview-stats>div{display:grid;gap:3px;padding:11px 13px;border-right:1px solid #eee9e1}
+.demo-preview-stats>div:last-child{border-right:0}
+.demo-preview-stats b{color:#39334c;font-size:16px;font-variant-numeric:tabular-nums}
+.demo-preview-stats span{color:#807a72;font-size:9px}
+.demo-preview-records{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.demo-preview-record{display:grid;align-content:start;gap:7px;min-width:0;padding:12px;border:1px solid #eee9e1;border-radius:9px;background:#fff}
+.demo-preview-record>div{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.demo-preview-record>b{overflow-wrap:anywhere;color:#26231f;font-size:12px}
+.demo-preview-record>small{min-height:28px;color:#77716a;font-size:9px;line-height:1.5}
+.demo-preview-record>strong{color:#5d5197;font-size:11px}
+.demo-preview-record>strong span{color:#8a837a;font-size:8px;font-weight:500}
+.demo-preview-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:3px}
+.demo-preview-actions>span{color:#817b73;font-size:9px;line-height:1.5}
+.demo-preview-actions>div{display:flex;gap:7px;flex-wrap:wrap}
+.detail-empty{display:grid;place-content:center;gap:6px;min-height:260px;text-align:center}
+.detail-empty b{color:#38332e;font-size:12px}
+.detail-empty span{color:#817b73;font-size:10px}
+@media(max-width:760px){.demo-preview-panel{padding:14px}.demo-preview-heading{display:grid}.demo-preview-stats{grid-template-columns:1fr 1fr}.demo-preview-stats>div:nth-child(2){border-right:0}.demo-preview-stats>div:nth-child(-n+2){border-bottom:1px solid #eee9e1}.demo-preview-records{grid-template-columns:1fr}.demo-preview-record>small{min-height:0}.demo-preview-actions{align-items:stretch;flex-direction:column}.demo-preview-actions>div{display:grid}.demo-preview-actions button{width:100%}}
