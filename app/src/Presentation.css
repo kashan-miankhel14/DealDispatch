@@ -104,6 +104,10 @@
 .live-task-actions label{font-size:11px}
 .live-task-actions select{padding:9px;font-size:12px}
 .live-assign-button{padding:10px 13px;font-size:12px}
+.live-queue-explainer{font-size:10px;line-height:1.55}
+.live-task-heading>b{font-size:13px}
+.live-task-flag{padding:4px 7px;font-size:8px}
+.live-record .live-task-description{font-size:10px;line-height:1.55}
 .workflow-track{gap:10px;margin-top:17px}
 .workflow-step{min-height:78px;gap:10px;padding:12px}
 .workflow-step>span{width:25px;height:25px;flex-basis:25px;font-size:10px}

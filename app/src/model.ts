@@ -55,6 +55,13 @@ export type Log = {
 }
 export type DemoState = { people: Person[]; opportunities: Opportunity[]; log: Log[] }
 export type QueueFilter = 'all' | 'unassigned' | 'assigned' | 'coverage'
+export type DemoTeam = { id: string; name: string; managerName: string; focus: string; memberIds: string[] }
+
+export const demoTeams: DemoTeam[] = [
+  { id: 'enterprise', name: 'Enterprise & Technical', managerName: 'Avery Brooks', focus: 'Enterprise SaaS · technical evaluation', memberIds: ['maya', 'noah'] },
+  { id: 'fintech', name: 'Fintech & Strategic', managerName: 'Jordan Reed', focus: 'Fintech · enterprise accounts', memberIds: ['samir', 'ria'] },
+  { id: 'commercial', name: 'SaaS Outbound', managerName: 'Taylor Morgan', focus: 'SaaS · outbound prospecting', memberIds: ['elena', 'jules'] },
+]
 
 export function matchesQueueFilter(opportunity: Opportunity, filter: QueueFilter): boolean {
   if (filter === 'unassigned') return opportunity.state !== 'owned'

@@ -1,26 +1,29 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { addMinutes, candidateRank, chooseNext, demoSeed, eligible, makeLog, matchesQueueFilter, performanceScore } from './model'
+import { addMinutes, candidateRank, chooseNext, demoSeed, demoTeams, eligible, makeLog, matchesQueueFilter, performanceScore } from './model'
 import type { DemoState, Log, Opportunity, Person, QueueFilter } from './model'
+import { AnalyticsDashboard } from './Analytics'
+import { DemoOrgChart } from './DemoOrgChart'
 import './App.css'
 import './Urgency.css'
 import './Prospects.css'
 import './DemoPreview.css'
 import './AiOutreach.css'
 import './Presentation.css'
+import './Experience.css'
 
 const STORAGE_KEY = 'dealdispatch.demo.v2'
 const INITIAL_NOW = Date.now()
-type Section = 'live' | 'team' | 'assignment' | 'activity'
+type Section = 'live' | 'analytics' | 'team' | 'assignment' | 'activity'
 type Connection = { mode: 'loading' | 'demo' | 'connected' | 'partial' | 'error'; message: string }
 type LiveSource<T> = { state: 'live' | 'empty' | 'error'; count: number; items: T[]; message?: string }
 type LiveMetricSource = { state: 'live' | 'empty' | 'error'; count: number; metrics: Record<string, string | number | boolean>; message?: string }
 type LiveSdr = { id: string | null; name: string; role: string; metrics: Record<string, string | number | boolean> }
 type LiveTrend = { period: string | null; metrics: Record<string, string | number | boolean> }
-type LiveTask = { id: string; title: string; status: string; priority: number | string | null; dueAt: string | null; assigneeId: string | null; assigneeName: string | null; entityId: string | null; entityLabel: string | null; entityType: string | null }
+type LiveTask = { id: string; title: string; description: string | null; status: string; priority: number | string | null; dueAt: string | null; createdAt: string | null; assigneeId: string | null; assigneeName: string | null; entityId: string | null; entityLabel: string | null; entityType: string | null }
 type LiveMember = { id: string | null; name: string; role: string; active: boolean | null; expertise: string[] }
 type GlobalProspect = { name: string; title?: string; seniority?: string; company?: string; domain?: string; industry?: string; location?: string; workEmail?: string; linkedinUrl?: string; confidence?: number | null; website?: string; employeeCount?: string; revenue?: string; description?: string }
 type ProspectSearchState = { status: 'idle' | 'loading' | 'success' | 'error'; kind: 'contacts' | 'companies'; count: number; results: GlobalProspect[]; message?: string }
-type AiOutreachDraft = { subject: string; emailBody: string; personalization: string; discoveryQuestion: string; evidenceUsed: string[]; caveat: string; model: string }
+type AiOutreachDraft = { prepSummary: string; callOpener: string; qualificationQuestions: string[]; recommendedNextStep: string; subject: string; emailBody: string; personalization: string; evidenceUsed: string[]; caveat: string; model: string }
 type AiOutreachState = { status: 'idle' | 'loading' | 'success' | 'error'; key?: string; draft?: AiOutreachDraft; message?: string }
 type Graph8Snapshot = {
   mode: 'connected' | 'partial' | 'error'
@@ -91,7 +94,7 @@ export default function App() {
   const [prospectCountry, setProspectCountry] = useState('')
   const [prospectLimit, setProspectLimit] = useState(3)
   const [prospectSearch, setProspectSearch] = useState<ProspectSearchState>({ status: 'idle', kind: 'contacts', count: 0, results: [] })
-  const [outreachOffer, setOutreachOffer] = useState('DealDispatch helps sales teams route urgent buyer signals to qualified SDRs and prepare manager-reviewed first-touch outreach.')
+  const [outreachOffer, setOutreachOffer] = useState('DealDispatch prototypes a human-reviewed, time-bound handoff for urgent buyer work.')
   const [aiOutreach, setAiOutreach] = useState<AiOutreachState>({ status: 'idle' })
   const [liveAssigneeByTask, setLiveAssigneeByTask] = useState<Record<string, string>>({})
   const [assigningTaskId, setAssigningTaskId] = useState<string | null>(null)
@@ -321,8 +324,26 @@ export default function App() {
 
   const copyAiOutreach = async (draft: AiOutreachDraft) => {
     try {
-      await navigator.clipboard.writeText(`Subject: ${draft.subject}\n\n${draft.emailBody}`)
-      setToast('AI draft copied · review before sending')
+      await navigator.clipboard.writeText([
+        'SDR PREP BRIEF',
+        draft.prepSummary,
+        '',
+        'CALL OPENER',
+        draft.callOpener,
+        '',
+        'QUALIFICATION QUESTIONS',
+        ...draft.qualificationQuestions.map((question, index) => `${index + 1}. ${question}`),
+        '',
+        'RECOMMENDED NEXT STEP',
+        draft.recommendedNextStep,
+        '',
+        `SUBJECT: ${draft.subject}`,
+        '',
+        draft.emailBody,
+        '',
+        `REVIEW: ${draft.caveat || 'Verify facts before outreach.'}`,
+      ].join('\n'))
+      setToast('Full SDR prep pack copied · review before use')
     } catch {
       setToast('Clipboard access is unavailable in this browser')
     }
@@ -402,9 +423,30 @@ export default function App() {
   const assignableLiveMembers = liveSnapshot?.sources.members.items
     .filter(member => member.id && member.active === true && isSdrRole(member.role))
     .sort((left, right) => (liveLeaderboardRanks.get(left.id ?? '') ?? Number.MAX_SAFE_INTEGER) - (liveLeaderboardRanks.get(right.id ?? '') ?? Number.MAX_SAFE_INTEGER)) ?? []
-  const liveUnassignedTasks = liveSnapshot?.sources.tasks.items
-    .filter(task => !task.assigneeId && !task.assigneeName)
-    .sort((left, right) => priorityRank(left.priority) - priorityRank(right.priority) || (Date.parse(left.dueAt ?? '') || Number.MAX_SAFE_INTEGER) - (Date.parse(right.dueAt ?? '') || Number.MAX_SAFE_INTEGER)) ?? []
+  const liveTasks = [...(liveSnapshot?.sources.tasks.items ?? [])].sort((left, right) => {
+    const attention = (task: LiveTask) => {
+      const due = Date.parse(task.dueAt ?? '')
+      if (Number.isFinite(due) && due < now) return 0
+      if (Number.isFinite(due) && due - now <= 24 * 60 * 60 * 1000) return 1
+      if (priorityRank(task.priority) <= 2) return 2
+      const created = Date.parse(task.createdAt ?? '')
+      if (Number.isFinite(created) && now - created >= 7 * 24 * 60 * 60 * 1000) return 3
+      if (!task.assigneeId && !task.assigneeName) return 4
+      return 5
+    }
+    return attention(left) - attention(right)
+      || (Date.parse(left.dueAt ?? '') || Number.MAX_SAFE_INTEGER) - (Date.parse(right.dueAt ?? '') || Number.MAX_SAFE_INTEGER)
+      || priorityRank(left.priority) - priorityRank(right.priority)
+  })
+  const overdueLiveTaskCount = liveTasks.filter(task => {
+    const due = Date.parse(task.dueAt ?? '')
+    return Number.isFinite(due) && due < now
+  }).length
+  const unassignedLiveTaskCount = liveTasks.filter(task => !task.assigneeId && !task.assigneeName).length
+  const staleLiveTaskCount = liveTasks.filter(task => {
+    const created = Date.parse(task.createdAt ?? '')
+    return Number.isFinite(created) && now - created >= 7 * 24 * 60 * 60 * 1000
+  }).length
   const workflowStep = selected?.state === 'offered' ? 3 : selected?.state === 'owned' || selected?.state === 'gap' ? 4 : selected ? 2 : 1
   const coachingSignals = focusedPerson ? [
     { label: 'Call quality', value: focusedPerson.metrics.callGrade },
@@ -418,42 +460,62 @@ export default function App() {
       <a className="wordmark" href="#live"><span className="brand-symbol">d<span>.</span></span><span>deald<span>dispatch</span></span></a>
       <div className="rail-label">SDR MANAGEMENT</div>
       <button className={`nav-link ${section === 'live' ? 'nav-active' : ''}`} onClick={() => setSection('live')}><span>◉</span> Live Graph8</button>
-      <button className={`nav-link ${section === 'team' ? 'nav-active' : ''}`} onClick={() => setSection('team')}><span>▥</span> Demo scorecard</button>
+      <button className={`nav-link ${section === 'analytics' ? 'nav-active' : ''}`} onClick={() => setSection('analytics')}><span>▤</span> Analytics &amp; charts</button>
+      <button className={`nav-link ${section === 'team' ? 'nav-active' : ''}`} onClick={() => setSection('team')}><span>▥</span> Demo org &amp; scorecard</button>
       <button className={`nav-link ${section === 'assignment' ? 'nav-active' : ''}`} onClick={() => setSection('assignment')}><span>◈</span> Urgency simulation <b>{unassignedCount}</b></button>
       <button className={`nav-link ${section === 'activity' ? 'nav-active' : ''}`} onClick={() => setSection('activity')}><span>◷</span> Demo audit trail</button>
       <div className="rail-spacer"/>
-      <div className="rail-foot"><div className="mini-logo">DD</div><div><b>{section === 'live' ? 'Graph8 workspace' : 'Demo workspace'}</b><small>{section === 'live' ? 'Live data · manager controlled' : 'Synthetic SDR data'}</small></div><span className="status-dot"/></div>
+      <div className="rail-foot"><div className="mini-logo">DD</div><div><b>{section === 'live' ? 'Graph8 workspace' : section === 'analytics' ? 'Analytics workspace' : 'Demo workspace'}</b><small>{section === 'live' ? 'Live data · manager controlled' : section === 'analytics' ? 'Live + labeled sample data' : 'Synthetic SDR data'}</small></div><span className="status-dot"/></div>
     </aside>
 
     <main className="main">
       <header className="topbar">
-        <div className="crumb">DealDispatch <span>/</span> <b>{section === 'live' ? 'Live Graph8 data' : section === 'team' ? 'Demo scorecard' : section === 'assignment' ? 'Urgency simulation' : 'Demo audit trail'}</b></div>
+        <div className="crumb">DealDispatch <span>/</span> <b>{section === 'live' ? 'Live Graph8 data' : section === 'analytics' ? 'Analytics & charts' : section === 'team' ? 'Demo scorecard' : section === 'assignment' ? 'Urgency simulation' : 'Demo audit trail'}</b></div>
         <div className="top-actions"><span className={`connection-pill ${connection.mode}`}><i/>{connection.message}</span><button className="icon-button" aria-label="Check Graph8 connection" title="Check Graph8 SDK connection" onClick={checkGraph8} disabled={busy}>{busy ? '···' : '↻'}</button><div className="user-dot">KS</div></div>
       </header>
 
       <div className="content">
         <section className="intro">
           <div>
-            <div className="kicker">{section === 'live' ? 'GRAPH8 LIVE DATA · GEMINI AI SALES COPILOT' : section === 'team' ? 'DEMO PERFORMANCE, PUT TO WORK' : section === 'assignment' ? 'URGENT HANDOFF SIMULATION' : 'DEMO EVIDENCE AND OUTCOMES'}</div>
-            <h1>{section === 'live' ? <>From buyer signal<br/><em>to a better next step.</em></> : section === 'team' ? <>Measure results.<br/><em>Improve the next assignment.</em></> : section === 'assignment' ? <>Give urgent work<br/><em>its best-fit SDR.</em></> : <>Every assignment,<br/><em>accounted for.</em></>}</h1>
+            <div className="kicker">{section === 'live' ? 'GRAPH8 DATA · OPTIONAL GEMINI PREP · HANDOFF HYPOTHESIS' : section === 'analytics' ? 'REAL GRAPH8 TRENDS · SEPARATE DEMO ANALYTICS' : section === 'team' ? 'DEMO PERFORMANCE, PUT TO WORK' : section === 'assignment' ? 'URGENT HANDOFF SIMULATION' : 'DEMO EVIDENCE AND OUTCOMES'}</div>
+            <h1>{section === 'live' ? <>From buyer signal<br/><em>to a better next step.</em></> : section === 'analytics' ? <>See the data.<br/><em>Know what is live.</em></> : section === 'team' ? <>Measure results.<br/><em>Improve the next assignment.</em></> : section === 'assignment' ? <>Give urgent work<br/><em>its best-fit SDR.</em></> : <>Every assignment,<br/><em>accounted for.</em></>}</h1>
             <p>{section === 'live'
-              ? 'DealDispatch pairs live Graph8 SDR data and real prospect search with Gemini-drafted outreach. Urgent rep eligibility stays rule-based; managers review every draft and action.'
-              : section === 'team'
-                ? 'An explicitly synthetic scorecard showing how performance and outcomes can inform assignment.'
+              ? 'Graph8 already provides sales analytics, routing and AI. This prototype tests a narrower idea: an explicit timed acceptance and fallback loop for urgent human work. The dispatch scenario is synthetic.'
+              : section === 'analytics'
+                ? 'Explore actual Graph8 activity trends when your organization returns them, then compare against a separate, clearly labeled synthetic demo. The two data sources are never mixed.'
+                : section === 'team'
+                ? 'A complete fictional SDR org chart, manager scorecard and workload view. Use it to demonstrate the workflow—not as live Graph8 data.'
                 : section === 'assignment'
-                  ? 'A synthetic walkthrough of eligibility, timed acceptance, automatic reroute and capacity-gap escalation.'
+                  ? 'A browser-only simulation of matching urgent work, timing an offer, rerouting on timeout and flagging a coverage gap. It does not dispatch live Graph8 work.'
                   : 'A simulated audit trail of offers, reroutes and recorded outcomes.'}</p>
           </div>
-          <div className="intro-buttons">{section === 'live' ? <><button className="quiet-button" onClick={checkGraph8} disabled={busy}>↻ &nbsp; {busy ? 'Refreshing…' : 'Refresh live data'}</button><button className="signal-button" onClick={() => setSection('assignment')}>Open urgency simulation <span>→</span></button></> : <><button className="quiet-button" onClick={reset}>↺ &nbsp; Reset demo</button><button className="signal-button" onClick={addSignal}><span>＋</span> Simulate buyer signal</button></>}</div>
+          <div className="intro-buttons">{section === 'live' ? <><button className="quiet-button" onClick={checkGraph8} disabled={busy}>↻ &nbsp; {busy ? 'Refreshing…' : 'Refresh live data'}</button><button className="signal-button" onClick={() => setSection('assignment')}>Open urgency simulation <span>→</span></button></> : section === 'analytics' ? <><button className="quiet-button" onClick={checkGraph8} disabled={busy}>↻ &nbsp; {busy ? 'Refreshing…' : 'Refresh Graph8 charts'}</button><button className="signal-button" onClick={() => setSection('team')}>Open demo scorecard <span>→</span></button></> : <><button className="quiet-button" onClick={reset}>↺ &nbsp; Reset demo</button><button className="signal-button" onClick={addSignal}><span>＋</span> Simulate buyer signal</button></>}</div>
         </section>
+
+        {section === 'analytics' && <AnalyticsDashboard
+          trends={liveSnapshot?.sources.trends.items ?? []}
+          trendState={liveSnapshot?.sources.trends.state ?? null}
+          trendMessage={liveSnapshot?.sources.trends.message}
+          reps={liveSnapshot?.sources.sdrs.items ?? []}
+          repsState={liveSnapshot?.sources.sdrs.state ?? null}
+          repsMessage={liveSnapshot?.sources.sdrs.message}
+          loaded={Boolean(liveSnapshot)}
+          people={data.people}
+          onOpenLive={() => setSection('live')}
+          onFocusPerson={id => { setFocusedPersonId(id); setSection('team') }}
+        />}
 
         {section === 'live' && !liveSnapshot && <section className="live-data-card live-connect-state" aria-label="Graph8 connection status">
           <div className="live-data-heading"><div><div className="kicker">GRAPH8 CONNECTION</div><h2>{connection.mode === 'loading' ? 'Connecting to your organization…' : connection.mode === 'demo' ? 'Live data is not configured' : 'Could not load live data'}</h2><p>{connection.mode === 'demo' ? 'Set G8_API_KEY in app/.env and restart the app. The key stays server-side.' : connection.message}</p></div><span className={`live-state live-${connection.mode}`}>{connection.mode === 'loading' ? 'CONNECTING' : connection.mode === 'demo' ? 'DEMO ONLY' : 'READ FAILED'}</span></div>
-          <button className="quiet-button" onClick={checkGraph8} disabled={busy}>↻ &nbsp; Retry Graph8 read</button>
+          <div className="live-connect-actions"><button className="quiet-button" onClick={checkGraph8} disabled={busy}>↻ &nbsp; Retry Graph8 read</button><button className="signal-button" onClick={() => setSection('team')}>Open synthetic demo <span>→</span></button></div>
         </section>}
 
         {section === 'live' && liveSnapshot && <section className="live-data-card" aria-label="Live Graph8 workspace">
           <div className="live-data-heading"><div><div className="kicker">CONNECTED GRAPH8 DATA</div><h2>Live organization snapshot</h2><p>Graph8 API data · {liveSnapshot.fetchedAt ? new Date(liveSnapshot.fetchedAt).toLocaleString() : 'latest refresh'}</p></div><span className={`live-state live-${liveSnapshot.mode}`}>{liveSnapshot.mode === 'error' ? 'READ FAILED' : liveSnapshot.mode === 'partial' ? 'PARTIAL READ' : 'LIVE READ'}</span></div>
+          {liveSnapshot.counts.sdrs === 0 && liveSnapshot.counts.openTasks === 0 && <aside className="demo-empty-callout" aria-label="Synthetic demo fallback">
+            <div><span className="demo-callout-kicker">LIVE ORG HAS NO SDR OR TASK ROWS</span><h3>Use the complete sample workspace instead</h3><p>The demo includes a fictional manager-to-SDR org chart, scorecard, workload, buyer signals and four-step handoff. Sample data stays separate from Graph8.</p></div>
+            <div><button className="quiet-button" onClick={() => setSection('team')}>Open demo org chart</button><button className="signal-button" onClick={reset}>Run four-step demo <span>→</span></button></div>
+          </aside>}
           <div className="live-data-grid">
             <section className="live-data-column"><div className="live-column-heading"><h3>SDR team summary · 30 days</h3><span>{liveSnapshot.sources.summary.count} metrics</span></div>
               {liveSnapshot.sources.summary.state === 'error' ? <p className="live-empty">{liveSnapshot.sources.summary.message}</p> : Object.entries(liveSnapshot.sources.summary.metrics).length ? <div className="live-metric-list">{orderedLiveMetrics(liveSnapshot.sources.summary.metrics).map(([key, value]) => <div className="live-metric-row" key={key}><span>{liveLabel(key)}</span><b>{liveValue(value, key)}</b></div>)}</div> : <p className="live-empty">Graph8 returned no team summary metrics.</p>}
@@ -470,19 +532,26 @@ export default function App() {
             <section className="live-data-column"><div className="live-column-heading"><h3>Per-SDR activity · 30 days</h3><span>{liveSnapshot.sources.activity.count} rows</span></div>
               {liveSnapshot.sources.activity.state === 'error' ? <p className="live-empty">{liveSnapshot.sources.activity.message}</p> : liveSnapshot.sources.activity.items.length ? liveSnapshot.sources.activity.items.slice(0, 10).map(person => <div className="live-record" key={person.id ?? person.name}><b>{person.name}</b><span>{person.role || 'Graph8 SDR'}</span><div className="live-metrics">{orderedLiveMetrics(person.metrics).map(([key, value]) => <small key={key}>{liveLabel(key)} <b>{liveValue(value, key)}</b></small>)}{Object.keys(person.metrics).length === 0 && <small>No activity metrics in this response</small>}</div></div>) : <p className="live-empty">Graph8 returned no per-SDR activity rows. No demo reps are substituted.</p>}
             </section>
-            <section className="live-data-column"><div className="live-column-heading"><h3>Unassigned open tasks</h3><span>{liveUnassignedTasks.length} rows</span></div>
-              {liveSnapshot.sources.tasks.state === 'error' ? <p className="live-empty">{liveSnapshot.sources.tasks.message}</p> : liveUnassignedTasks.length ? liveUnassignedTasks.slice(0, 10).map(task => {
+            <section className="live-data-column"><div className="live-column-heading live-queue-header"><h3>Graph8 work-rescue queue</h3><span>{liveTasks.length} loaded · {overdueLiveTaskCount} overdue · {staleLiveTaskCount} older than 7d · {unassignedLiveTaskCount} unassigned</span></div>
+              <p className="live-queue-explainer">Graph8 open tasks only. Sort order: overdue, due within 24 hours, high priority, age over 7 days, then missing owner. This view reads up to 100 rows and displays the first 12; assignment requires manager review.</p>
+              {liveSnapshot.sources.tasks.state === 'error' ? <p className="live-empty">{liveSnapshot.sources.tasks.message}</p> : liveTasks.length ? liveTasks.slice(0, 12).map(task => {
                 const selectedAssigneeId = liveAssigneeByTask[task.id] ?? assignableLiveMembers[0]?.id ?? ''
+                const due = Date.parse(task.dueAt ?? '')
+                const created = Date.parse(task.createdAt ?? '')
+                const taskAttention = Number.isFinite(due) && due < now ? 'OVERDUE' : Number.isFinite(due) && due - now <= 24 * 60 * 60 * 1000 ? 'DUE SOON' : priorityRank(task.priority) <= 2 ? 'HIGH PRIORITY' : Number.isFinite(created) && now - created >= 7 * 24 * 60 * 60 * 1000 ? 'STALE · 7D+' : !task.assigneeId && !task.assigneeName ? 'NEEDS OWNER' : 'OPEN'
                 return <div className="live-record" key={task.id}>
-                  <b>{task.title}</b><span>{task.entityLabel || task.entityType || 'Graph8 task'} · priority {livePriority(task.priority)}</span><small>{task.dueAt ? `Due ${new Date(task.dueAt).toLocaleString()}` : `Graph8 task ${task.id}`}</small>
-                  <div className="live-task-actions">{assignableLiveMembers.length && liveSnapshot.taskWritesEnabled ? <>
+                  <div className="live-task-heading"><b>{task.title}</b><span className={`live-task-flag ${taskAttention === 'OVERDUE' ? 'overdue' : ''}`}>{taskAttention}</span></div>
+                  <span>{task.entityLabel || task.entityType || 'Graph8 task'} · priority {livePriority(task.priority)}</span>
+                  <small>{task.dueAt ? `Due ${new Date(task.dueAt).toLocaleString()}` : `No due date · Graph8 task ${task.id}`}{task.assigneeName ? ` · Owner: ${task.assigneeName}` : !task.assigneeId ? ' · Unassigned' : ''}</small>
+                  {task.description && <p className="live-task-description">{task.description}</p>}
+                  {!task.assigneeId && !task.assigneeName && <div className="live-task-actions">{assignableLiveMembers.length && liveSnapshot.taskWritesEnabled ? <>
                     <label>Assign to active SDR<select aria-label={`Choose an SDR for ${task.title}`} value={selectedAssigneeId} onChange={event => setLiveAssigneeByTask(old => ({ ...old, [task.id]: event.target.value }))}>
                       {assignableLiveMembers.map(member => <option key={member.id} value={member.id ?? ''}>{member.name}{member.role ? ` · ${member.role}` : ''}</option>)}
                     </select></label>
                     <button className="live-assign-button" disabled={!selectedAssigneeId || assigningTaskId !== null} onClick={() => { if (selectedAssigneeId) void assignLiveTask(task, selectedAssigneeId) }}>{assigningTaskId === task.id ? 'Assigning…' : 'Assign in Graph8'}</button>
-                  </> : <small className="live-empty">{!liveSnapshot.taskWritesEnabled ? 'Live task writes are disabled. Enable them only behind access protection.' : 'Assignment unavailable: no verified active SDR role in this Graph8 roster.'}</small>}</div>
+                  </> : <small className="live-empty">{!liveSnapshot.taskWritesEnabled ? 'Live task writes are disabled. Enable them only behind access protection.' : 'Assignment unavailable: no verified active SDR role in this Graph8 roster.'}</small>}</div>}
                 </div>
-              }) : <p className="live-empty">{liveSnapshot.sources.tasks.state === 'empty' ? 'Graph8 returned no open tasks.' : 'No unassigned tasks appeared in the open task rows returned by Graph8.'}</p>}
+              }) : <p className="live-empty">{liveSnapshot.sources.tasks.state === 'empty' ? 'Graph8 returned no open tasks. There is no customer work to rescue in this organization yet.' : 'No open Graph8 tasks were returned.'}</p>}
             </section>
             <section className="live-data-column"><div className="live-column-heading"><h3>Graph8 team roster</h3><span>{liveSnapshot.sources.members.count} rows</span></div>
               {liveSnapshot.sources.members.state === 'error' ? <p className="live-empty">{liveSnapshot.sources.members.message}</p> : liveSnapshot.sources.members.items.length ? liveSnapshot.sources.members.items.slice(0, 10).map(member => <div className="live-record live-member" key={member.id ?? member.name}><b>{member.name}</b><span>{member.role || 'Team member'}</span><small>{member.active === null ? 'Roster status not provided' : member.active ? 'Active roster member · duty/capacity unknown' : 'Inactive roster member'}</small>{member.expertise.length > 0 && <small>Expertise: {member.expertise.join(', ')}</small>}</div>) : <p className="live-empty">Graph8 returned no team member rows.</p>}
@@ -493,6 +562,8 @@ export default function App() {
 
         {section === 'live' && <section className="prospect-search-panel" aria-label="Graph8 global prospect search">
           <div className="prospect-search-heading"><div><div className="kicker">GRAPH8 GLOBAL INDEX</div><h2>Find real prospects</h2><p>Search Graph8’s global B2B index. These prospects are separate from your organization’s SDR activity and CRM records.</p></div><span className="source-pill">ON-DEMAND SEARCH</span></div>
+          <div className="ai-workflow-strip" aria-label="AI outreach workflow"><div><b>1 · Find</b><span>Search real Graph8 prospects</span></div><i>→</i><div><b>2 · Ground</b><span>Use prospect facts + your offer</span></div><i>→</i><div><b>3 · Prepare</b><span>Gemini builds one reviewable SDR pack</span></div></div>
+          <p className="ai-role-note"><b>What AI does:</b> One Gemini call turns selected Graph8 facts into a call brief, opener, qualification questions, a cautious next step and a first-touch email. It does not infer intent, score leads, pick an SDR, or send anything.</p>
           <form className="prospect-search-form" onSubmit={searchGlobalProspects}>
             <label>Search type<select value={prospectKind} onChange={event => setProspectKind(event.target.value as 'contacts' | 'companies')}><option value="contacts">People by job title</option><option value="companies">Companies by name</option></select></label>
             <label>{prospectKind === 'contacts' ? 'Job title contains' : 'Company name contains'}<input value={prospectQuery} onChange={event => setProspectQuery(event.target.value)} maxLength={120} required minLength={2} placeholder={prospectKind === 'contacts' ? 'e.g. VP Sales' : 'e.g. Acme'} /></label>
@@ -520,18 +591,21 @@ export default function App() {
               {prospect.description && <p>{prospect.description}</p>}
               {prospect.linkedinUrl && <a href={prospect.linkedinUrl} target="_blank" rel="noreferrer">View LinkedIn profile ↗</a>}
               <button className="ai-draft-button" onClick={() => void generateAiOutreach(prospect, prospectKey)} disabled={aiOutreach.status === 'loading' || outreachOffer.trim().length < 10}>
-                {showingAi && aiOutreach.status === 'loading' ? 'Gemini is drafting…' : '✦ Draft outreach with Gemini'}
+                {showingAi && aiOutreach.status === 'loading' ? 'Gemini is preparing…' : '✦ Prepare SDR pack with Gemini'}
               </button>
               {showingAi && aiOutreach.status === 'error' && <p className="ai-draft-error" role="alert">{aiOutreach.message}</p>}
-              {showingAi && aiOutreach.status === 'success' && aiOutreach.draft && <section className="ai-draft-card" aria-label="Gemini-generated outreach draft">
-                <div className="ai-draft-heading"><b>Gemini AI draft</b><span>{aiOutreach.draft.model}</span></div>
+              {showingAi && aiOutreach.status === 'success' && aiOutreach.draft && <section className="ai-draft-card" aria-label="Gemini-generated SDR prep pack">
+                <div className="ai-draft-heading"><b>Gemini SDR prep pack</b><span>{aiOutreach.draft.model}</span></div>
+                <div className="ai-prep-block"><small>FACTS TO WALK IN WITH</small><p>{aiOutreach.draft.prepSummary}</p></div>
+                <div className="ai-prep-block"><small>CALL OPENER</small><p>{aiOutreach.draft.callOpener}</p></div>
+                <div className="ai-prep-block"><small>QUALIFICATION QUESTIONS</small><ol>{aiOutreach.draft.qualificationQuestions.map((question, index) => <li key={`${index}-${question}`}>{question}</li>)}</ol></div>
+                <div className="ai-prep-block"><small>NEXT BEST HUMAN ACTION</small><p>{aiOutreach.draft.recommendedNextStep}</p></div>
                 <div className="ai-draft-subject"><small>SUBJECT</small><b>{aiOutreach.draft.subject}</b></div>
                 <p className="ai-draft-personalization">{aiOutreach.draft.personalization}</p>
                 <p className="ai-draft-body">{aiOutreach.draft.emailBody}</p>
-                <div className="ai-draft-question"><small>DISCOVERY QUESTION</small><b>{aiOutreach.draft.discoveryQuestion}</b></div>
                 {aiOutreach.draft.evidenceUsed.length > 0 && <div className="ai-evidence"><small>GROUNDED IN GRAPH8 DATA</small>{aiOutreach.draft.evidenceUsed.map(item => <span key={item}>{item}</span>)}</div>}
                 {aiOutreach.draft.caveat && <p className="ai-draft-caveat">Review: {aiOutreach.draft.caveat}</p>}
-                <button className="ai-copy-button" onClick={() => void copyAiOutreach(aiOutreach.draft!)}>Copy draft</button>
+                <button className="ai-copy-button" onClick={() => void copyAiOutreach(aiOutreach.draft!)}>Copy full SDR prep pack</button>
               </section>}
             </article>})}</div> : <p className="live-empty">No matches for these filters. Try a broader job title, industry, or country.</p>}
           </>}
@@ -552,7 +626,7 @@ export default function App() {
             <div><span className={`urgency-tag urgency-${opportunity.urgency}`}>{opportunity.urgency.toUpperCase()}</span><span className={`state state-${opportunity.state}`}>{opportunity.state === 'new' ? 'UNASSIGNED' : opportunity.state === 'offered' ? 'OFFER PENDING' : opportunity.state === 'owned' ? opportunity.outcome ? 'CLOSED' : 'ACCEPTED' : 'COVERAGE GAP'}</span></div>
             <b>{opportunity.company}</b><small>{opportunity.signal}</small><strong>{cash(opportunity.value)} <span>illustrative value</span></strong>
           </article>)}</div>
-          <div className="demo-preview-actions"><span>Demo actions update only this browser’s sample scorecard and audit trail.</span><div><button className="quiet-button" onClick={() => setSection('team')}>Open demo scorecard</button><button className="signal-button" onClick={reset}>Reset &amp; run four-step demo <span>→</span></button></div></div>
+          <div className="demo-preview-actions"><span>Demo actions update only this browser’s sample scorecard and audit trail.</span><div><button className="quiet-button" onClick={() => setSection('team')}>Open demo org + scorecard</button><button className="signal-button" onClick={reset}>Reset &amp; run four-step demo <span>→</span></button></div></div>
         </section>}
 
         {section === 'team' && <>
@@ -562,6 +636,8 @@ export default function App() {
             <div className="metric"><span className="metric-icon violet">✳</span><div><small>Average call grade</small><strong>{meanCallGrade}<small className="score-suffix"> / 100</small></strong><span className="metric-note">Synthetic sample only</span></div></div>
             <div className="metric"><span className="metric-icon purple">♙</span><div><small>Assignable work capacity</small><strong>{availableSlots}</strong><span className="metric-note">Across {capacityCount} available SDRs</span></div></div>
           </section>
+
+          <DemoOrgChart teams={demoTeams} people={data.people} onSelectPerson={setFocusedPersonId}/>
 
           <div className="workspace-head"><div><h2>SDR performance</h2><p>30-day view · outcomes and quality determine rank; activity volume is context.</p></div><span className="period-pill">LAST 30 DAYS</span></div>
           <section className="team-grid">
@@ -599,6 +675,11 @@ export default function App() {
         </>}
 
         {section === 'assignment' && <>
+          <section className="simulator-primer" aria-label="Urgency simulator explanation">
+            <div className="simulator-primer-copy"><div className="kicker">THE PRODUCT HYPOTHESIS · SIMULATION ONLY</div><h2>Keep high-intent work from sitting unowned.</h2><p>For a qualified signal that needs a human, offer the work to one eligible SDR for a clear response window. Acceptance claims ownership; decline or timeout tries the next eligible SDR; no available rep becomes a manager-visible coverage gap. Graph8 feature-gap status is unconfirmed.</p></div>
+            <div className="simulator-benefits"><div><b>01</b><span><strong>Match</strong><small>Skills, segment outcomes, reliability and capacity</small></span></div><div><b>02</b><span><strong>Respond</strong><small>Timed accept / decline with a visible owner</small></span></div><div><b>03</b><span><strong>Recover</strong><small>Reroute or flag a manager coverage gap</small></span></div></div>
+            <div className="simulator-disclaimer"><b>SIMULATOR ONLY</b><span>Buyer signals, SDR availability and offer responses are fictional browser data. It does not read live intent alerts, notify reps, or auto-assign Graph8 tasks.</span></div>
+          </section>
           <section className="metrics assignment-metrics">
             <div className="metric"><span className="metric-icon coral">↗</span><div><small>Unassigned buyer work</small><strong>{unassignedCount.toString().padStart(2, '0')}</strong><span className="metric-note">Needs an SDR owner</span></div></div>
             <div className="metric"><span className="metric-icon blue">✓</span><div><small>Assigned and in progress</small><strong>{assignedCount.toString().padStart(2, '0')}</strong><span className="metric-note">Tracked in this demo</span></div></div>
@@ -630,7 +711,7 @@ export default function App() {
                 return <div className="panic-offer-card">
                   <div className="panic-offer-heading"><div><span className="panic-kicker">⚡ URGENT OFFER · WAITING FOR ACCEPTANCE</span><h3>{offerPerson?.name ?? 'Assigned SDR'} has the next {remaining}s</h3></div><div className="panic-countdown">00:{String(remaining).padStart(2, '0')}</div></div>
                   <p>If this offer is declined or expires, the next eligible rep gets it automatically. This demo simulates the rep response and sends no notification.</p>
-                  <div className="panic-offer-actions"><button className="accept-button" disabled={remaining === 0 || !offerPerson} onClick={() => acceptOffer(selected)}>✓ &nbsp; Accept offer</button><button className="decline-button" onClick={() => rerouteOffer(selected)}>Decline · reroute now</button></div>
+                  <div className="panic-offer-actions"><button className="accept-button" disabled={remaining === 0 || !offerPerson} onClick={() => acceptOffer(selected)}>✓ &nbsp; Accept offer</button><button className="decline-button" onClick={() => rerouteOffer(selected)}>Decline · reroute now</button><button className="timeout-button" onClick={() => rerouteOffer(selected, true)}>Simulate timeout · reroute</button></div>
                 </div>
               })() : selected.state === 'owned' ? <>
                 {(() => {
@@ -650,7 +731,7 @@ export default function App() {
                     <div className="match-score">{score}<small>FIT</small></div><button className="assign-person-button" disabled={!canTake} onClick={() => offerTo(selected, person.id)}>{canTake ? 'Offer' : '—'}</button>
                   </div>
                 })}</div>
-                <div className="route-logic"><span>OFFER ELIGIBILITY</span><p><b>35%</b> same-segment outcomes · <b>25%</b> expertise · <b>20%</b> call grade · <b>10%</b> capacity · <b>10%</b> follow-through.<br/>Only active, contracted, on-duty SDRs with capacity and matching skills enter the offer order.</p></div>
+                <div className="route-logic"><span>OFFER ELIGIBILITY</span><p><b>35%</b> smoothed same-segment outcomes · <b>25%</b> required-skill fit · <b>20%</b> call grade · <b>10%</b> capacity headroom · <b>10%</b> follow-through / first-touch reliability.<br/>Only active, contracted, on-duty SDRs with capacity and every required skill enter the offer order.</p></div>
                 <button className="dispatch-button panic-dispatch" onClick={() => topCandidate && offerTo(selected, topCandidate.id)} disabled={!topCandidate}>⚡ Open timed offer to best fit <span>→</span></button>
               </div>}
               <div className="detail-foot"><span>◉ &nbsp; Demo offers are simulated · no messages sent</span><span>{selected.dispatches} offer{selected.dispatches === 1 ? '' : 's'} opened</span></div>
@@ -671,7 +752,7 @@ export default function App() {
           })}</section>
         </>}
 
-        <footer><span>DealDispatch <b>·</b> SDR performance linked to better work assignment</span><span>{section === 'live' ? 'Graph8 task owners change only after manager confirmation; urgent rerouting stays simulated.' : 'All SDRs, scores, buyer work and outcomes here are synthetic demo data.'}</span></footer>
+        <footer><span>DealDispatch <b>·</b> SDR performance linked to better work assignment</span><span>{section === 'live' ? 'Graph8 task owners change only after manager confirmation; urgent rerouting stays simulated.' : section === 'analytics' ? 'Live Graph8 charts and synthetic sample charts are kept separate.' : 'All SDRs, scores, buyer work and outcomes here are synthetic demo data.'}</span></footer>
       </div>
     </main>
     {toast && <div className="toast" role="status"><span>✓</span>{toast}<button aria-label="Dismiss message" onClick={() => setToast('')}>×</button></div>}
